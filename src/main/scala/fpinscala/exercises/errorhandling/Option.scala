@@ -7,17 +7,30 @@ enum Option[+A]:
   case Some(get: A)
   case None
 
-  def map[B](f: A => B): Option[B] = ???
+  def map[B](f: A => B): Option[B] = this match
+    case Some(a) => Some(f(a))
+    case _ => None
 
-  def getOrElse[B>:A](default: => B): B = ???
+  def getOrElse[B>:A](default: => B): B = this match
+    case Some(a) => a
+    case _ => default
 
-  def flatMap[B](f: A => Option[B]): Option[B] = ???
+  def flatMap[B](f: A => Option[B]): Option[B] = this match
+    case Some(a) => f(a)
+    case _ => None
 
-  def orElse[B>:A](ob: => Option[B]): Option[B] = ???
+  def orElse[B>:A](ob: => Option[B]): Option[B] = this match
+    case Some(_) => this
+    case _ => ob
 
-  def filter(f: A => Boolean): Option[A] = ???
+  def filter(f: A => Boolean): Option[A] = this match
+    case Some(a) if f(a) => this
+    case _ => None
 
 object Option:
+
+  def lift[A, B](f: A => B): Option[A] => Option[B] =
+    _.map(f)
 
   def failingFn(i: Int): Int =
     val y: Int = throw new Exception("fail!") // `val y: Int = ...` declares `y` as having type `Int`, and sets it equal to the right hand side of the `=`.
@@ -36,10 +49,24 @@ object Option:
     if xs.isEmpty then None
     else Some(xs.sum / xs.length)
 
-  def variance(xs: Seq[Double]): Option[Double] = ???
+  def variance(xs: Seq[Double]): Option[Double] =
+    mean(xs).flatMap( m =>
+      mean(xs.map(x => math.pow(x - m, 2)))
+    )
 
-  def map2[A,B,C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] = ???
+  def map2[A,B,C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] =
+    lift[(A,B), C](f.tupled)(a.flatMap(a => b.map(b => (a,b))))
+    // alternative to (a, b) match { ... }
 
-  def sequence[A](as: List[Option[A]]): Option[List[A]] = ???
+  // first definition
+  //def sequence[A](as: List[Option[A]]): Option[List[A]] = as match
+  //  case h :: tail => h.flatMap(a => sequence(tail).map(s => a :: s))
+  //  case Nil => Some(Nil)
 
-  def traverse[A, B](as: List[A])(f: A => Option[B]): Option[List[B]] = ???
+  // in terms of traverse
+  def sequence[A](as: List[Option[A]]): Option[List[A]] =
+    traverse(as)(identity)
+
+  def traverse[A, B](as: List[A])(f: A => Option[B]): Option[List[B]] = as match
+    case h :: tail => f(h).flatMap(b => traverse(tail)(f).map(s => b :: s))
+    case Nil => Some(Nil)
