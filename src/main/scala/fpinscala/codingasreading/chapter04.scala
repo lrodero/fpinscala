@@ -1,4 +1,4 @@
-package fpinscala.codingasreading.chapter02
+package fpinscala.codingasreading
 
 import scala.util.control.NonFatal
 

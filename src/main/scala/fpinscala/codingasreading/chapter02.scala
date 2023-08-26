@@ -1,4 +1,4 @@
-package fpinscala.codingasreading.chapter02
+package fpinscala.codingasreading
 
 // Just to test that I can run code using IntelliJ and scala-cli:
 // $ scala-cli run src/main/scala/fpinscala/codingasreading/chapter02/chapter02.scala
