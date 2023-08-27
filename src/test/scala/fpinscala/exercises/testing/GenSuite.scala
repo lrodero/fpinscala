@@ -5,7 +5,7 @@ import fpinscala.answers.testing.exhaustive.Gen.`**`
 import fpinscala.exercises.common.Common.*
 import fpinscala.exercises.common.PropSuite
 import fpinscala.exercises.state.RNG
-import fpinscala.exercises.state.State.*
+import fpinscala.exercises.state.Automata.*
 import fpinscala.exercises.testing.Gen
 import fpinscala.exercises.testing.Gen.*
 import fpinscala.exercises.testing.Prop.*

@@ -4,28 +4,26 @@ import fpinscala.answers.testing.exhaustive.*
 import fpinscala.answers.testing.exhaustive.Prop.*
 import fpinscala.exercises.common.Common.*
 import fpinscala.exercises.common.PropSuite
-import fpinscala.exercises.state.State
-import fpinscala.exercises.state.State.*
+import fpinscala.exercises.state.Automata
+import fpinscala.exercises.state.Automata.*
 
 class StateSuite extends PropSuite:
   // a - the head element, next state - the tail of the list
-  private val stateA: State[List[String], Option[String]] =
-    State:
+  private val stateA: Automata[List[String], Option[String]] =
+    Automata:
       case Nil          => (None, Nil)
       case head :: tail => (Some(head), tail)
 
   // b - the length of the list, next state - the tail of the list
-  private val stateB: State[List[String], Int] =
-    State:
+  private val stateB: Automata[List[String], Int] =
+    Automata:
       case Nil          => (0, Nil)
       case head :: tail => (tail.length + 1, tail)
 
-  /*
   test("State.unit")(genString): str =>
     val (a, s) = unit[Int, String](str).run(0)
     assertEquals(a, str)
     assertEquals(s, 0)
-  */
 
   test("State.map")(genStringList): list =>
     val (b, s) = stateA.map(length).run(list)
@@ -41,7 +39,6 @@ class StateSuite extends PropSuite:
     assertEquals(c, expectedC)
     assertEquals(s, list.drop(2))
 
-  /*
   test("State.flatMap")(genStringList): list =>
     val (b, s) = stateA.flatMap(a => unit(length(a))).run(list)
     val expectedB = length(list.headOption)
@@ -55,7 +52,6 @@ class StateSuite extends PropSuite:
     val (first, rest) = list.splitAt(half)
     assertEquals(firstHalfElements, first.map(Some(_)))
     assertEquals(restElements, rest)
-  */
 
   private def length(maybeHead: Option[String]): Int =
     maybeHead.getOrElse("").length
