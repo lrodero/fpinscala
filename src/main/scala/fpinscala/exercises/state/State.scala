@@ -106,29 +106,29 @@ object RNG:
 
   def rollDice: Rand[Int] = nonNegativeLessThan(6)
 
-opaque type Automata[S, +A] = S => (A, S)
+opaque type Transition[S, +A] = S => (A, S)
 
-object Automata:
-  extension [S, A](underlying: Automata[S, A])
+object Transition:
+  extension [S, A](underlying: Transition[S, A])
     def run(s: S): (A, S) = underlying(s)
 
-    def map[B](f: A => B): Automata[S, B] =
+    def map[B](f: A => B): Transition[S, B] =
       s =>
         val (a, newS) = run(s)
         (f(a), newS)
 
-    def map2[B, C](sb: Automata[S, B])(f: (A, B) => C): Automata[S, C] =
+    def map2[B, C](sb: Transition[S, B])(f: (A, B) => C): Transition[S, C] =
       s1 =>
         val (a, s2) = run(s1)
         val (b, s3) = sb.run(s2)
         (f(a,b), s3)
 
-    def flatMap[B](f: A => Automata[S, B]): Automata[S, B] =
+    def flatMap[B](f: A => Transition[S, B]): Transition[S, B] =
       s1 =>
         val (a, s2) = run(s1)
         f(a).run(s2)
 
-  def sequence[S, A](automatas: List[Automata[S, A]]): Automata[S, List[A]] =
+  def sequence[S, A](automatas: List[Transition[S, A]]): Transition[S, List[A]] =
     s => automatas.foldRight((List.empty[A], s)){ (automata, acc) =>
       val list = acc._1
       val state = acc._2
@@ -136,9 +136,12 @@ object Automata:
       (list :+ a, newState)
     }
 
-  def apply[S, A](f: S => (A, S)): Automata[S, A] = f
+  def traverse[S, A, B](as: List[A])(f: A => Transition[S, B]): Transition[S, List[B]] =
+    as.foldRight(unit[S, List[B]](Nil))((a, acc) => f(a).map2(acc)(_ :: _))
 
-  def unit[S, A](a: A): Automata[S, A] = s => (a, s)
+  def apply[S, A](f: S => (A, S)): Transition[S, A] = f
+
+  def unit[S, A](a: A): Transition[S, A] = s => (a, s)
 
 enum Input:
   case Coin, Turn
@@ -146,4 +149,26 @@ enum Input:
 case class Machine(locked: Boolean, candies: Int, coins: Int)
 
 object Candy:
-  def simulateMachine(inputs: List[Input]): Automata[Machine, (Int, Int)] = ???
+  import Input.*
+  import Transition.*
+  def sim(input: Input): Transition[Machine, (Int, Int)] = Transition[Machine, (Int, Int)] {
+    machine =>
+      println(s"Machine: $machine; input: $input")
+      input match
+        case _ if machine.candies == 0 => ((machine.coins, 0), machine)
+        case Coin if machine.locked =>
+          ((machine.coins + 1, machine.candies), machine.copy(locked = false, coins = machine.coins + 1))
+        case Coin => ((machine.coins, machine.candies), machine)
+        case Turn if !machine.locked =>
+          ((machine.coins, machine.candies - 1), machine.copy(locked = true, candies = machine.candies - 1))
+        case Turn => ((machine.coins, machine.candies), machine)
+  }
+  def simulateMachine(inputs: List[Input]): Transition[Machine, (Int, Int)] = Transition[Machine, (Int, Int)] {
+    machine =>
+      inputs match
+        case Nil => ((machine.coins, machine.candies), machine)
+        case inputs =>
+          val (outputs, newMachine) = Transition.sequence(inputs.reverse.map(sim)).run(machine)
+          (outputs.last, newMachine)
+  }
+

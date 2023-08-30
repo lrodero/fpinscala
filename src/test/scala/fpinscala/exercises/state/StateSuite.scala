@@ -4,19 +4,19 @@ import fpinscala.answers.testing.exhaustive.*
 import fpinscala.answers.testing.exhaustive.Prop.*
 import fpinscala.exercises.common.Common.*
 import fpinscala.exercises.common.PropSuite
-import fpinscala.exercises.state.Automata
-import fpinscala.exercises.state.Automata.*
+import fpinscala.exercises.state.Transition
+import fpinscala.exercises.state.Transition.*
 
 class StateSuite extends PropSuite:
   // a - the head element, next state - the tail of the list
-  private val stateA: Automata[List[String], Option[String]] =
-    Automata:
+  private val stateA: Transition[List[String], Option[String]] =
+    Transition:
       case Nil          => (None, Nil)
       case head :: tail => (Some(head), tail)
 
   // b - the length of the list, next state - the tail of the list
-  private val stateB: Automata[List[String], Int] =
-    Automata:
+  private val stateB: Transition[List[String], Int] =
+    Transition:
       case Nil          => (0, Nil)
       case head :: tail => (tail.length + 1, tail)
 

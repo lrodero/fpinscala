@@ -7,8 +7,8 @@ import fpinscala.exercises.common.Common.*
 import fpinscala.exercises.common.PropSuite
 import fpinscala.exercises.state.Candy.*
 import fpinscala.exercises.state.Input.*
-import fpinscala.exercises.state.Automata.*
-import fpinscala.exercises.state.{ Input, Machine, Automata }
+import fpinscala.exercises.state.Transition.*
+import fpinscala.exercises.state.{ Input, Machine, Transition }
 
 class CandySuite extends PropSuite:
   private val genPosInt: Gen[Int]    = Gen.choose(1, 1000)
