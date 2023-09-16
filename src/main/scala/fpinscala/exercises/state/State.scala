@@ -128,11 +128,11 @@ object Transition:
         val (a, s2) = run(s1)
         f(a).run(s2)
 
-  def sequence[S, A](automatas: List[Transition[S, A]]): Transition[S, List[A]] =
-    s => automatas.foldRight((List.empty[A], s)){ (automata, acc) =>
+  def sequence[S, A](ts: List[Transition[S, A]]): Transition[S, List[A]] =
+    s => ts.foldRight((List.empty[A], s)){ (t, acc) =>
       val list = acc._1
       val state = acc._2
-      val (a, newState) = automata.run(state)
+      val (a, newState) = t.run(state)
       (list :+ a, newState)
     }
 

@@ -119,6 +119,9 @@ enum LazyList[+A]:
       case _ => None
     }
 
+  def zip[B](that: LazyList[B]): LazyList[(A, B)] =
+    zipWith(that){case (a, b) => (a, b)}
+
   def zipWith[B,C](that: LazyList[B])(f: (A,B) => C): LazyList[C] =
     unfold((this, that)) {
       case (Empty, _) => None

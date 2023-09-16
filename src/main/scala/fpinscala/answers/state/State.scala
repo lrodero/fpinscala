@@ -143,6 +143,29 @@ object RNG:
   def map2ViaFlatMap[A, B, C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] =
     flatMap(ra)(a => map(rb)(b => f(a, b)))
 
+
+opaque type State2[S, -I, +O] = (S, I) => (S, O)
+object State2:
+  extension[S, I, O](underlying: State2[S, I, O])
+    def run(s: S, i: I): (S, O) = underlying(s, i)
+    def map[B](f: O => B): State2[S, I, B] = (s, i) =>
+      val (s2, o) = underlying(s, i)
+      (s2, f(o))
+    def flatMap[B](f: O => State2[S, O, B]): State2[S, I, B] = (s, i) =>
+      val (s1, o) = underlying(s, i)
+      f(o)(s1, o)
+    def map2[B, C](f1: State2[S, O, B])(f2: (O, B) => C): State2[S, I, C] =
+      for
+        b <- underlying
+        c <- f1
+      yield f2(b, c)
+
+  def apply[S, I, O](f: (S, I) => (S, O)): State2[S, I, O] = f
+
+  def transformation[I1, S1](i: I1): S1 => (S1, String) = s =>
+    (i, s) match
+      case _ => (s, "")
+
 opaque type State[S, +A] = S => (A, S)
 
 object State:
