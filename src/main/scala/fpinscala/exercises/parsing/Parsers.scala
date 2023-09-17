@@ -14,7 +14,11 @@ object Parser:
     string(c.toString).map(_.charAt(0))
   def string(s: String): Parser[String] = str =>
     println(s"Checking $s against input $str")
-    Either.cond(str.startsWith(s), ParsingResult(s, str.substring(0, s.length), str.substring(s.length)), ParseError((Location(str), str) :: Nil, Nil))
+    Either.cond(str.startsWith(s), ParsingResult(str, str.substring(0, s.length), str.substring(s.length)), ParseError((Location(str), str) :: Nil, Nil))
+  def stringIgnoreUppercase(s: String): Parser[String] = str =>
+    if s.size > str.size then Left(ParseError((Location(str), str) :: Nil, Nil))
+    else
+      Either.cond(str.substring(0, s.size).equalsIgnoreCase(s), ParsingResult(str, str.substring(0, s.length), str.substring(s.length)), ParseError((Location(str), str) :: Nil, Nil))
   def regex(r: Regex): Parser[String] = str =>
     println(s"Checking regex('$r') against input $str")
     r.findPrefixOf(str) match
@@ -23,7 +27,9 @@ object Parser:
   def unit[A](a: A): Parser[A] =
     str => Right(ParsingResult(a, "", str))
   def succeed[A](a: A): Parser[A] = unit(a)
-  val nonNegativeInt: Parser[Int] = regex("[0-9]+".r).map(_.toInt)
+  val nonNegativeInt: Parser[Int] = regex("[+]?[0-9]+".r).map(_.toInt)
+  val intNumber: Parser[Int] = regex(("[+-]?[0-9]+").r).map(_.toInt)
+  val doubleNumber: Parser[Double] = regex("[+-]?[0-9]+(\\.[0-9]+)?".r).map(_.toDouble)
   val nConsecutiveAs: Parser[Int] = nonNegativeInt.flatMap { i =>
     char('a').listOfN(i).map(_.size)
   }
