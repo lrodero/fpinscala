@@ -1,51 +1,82 @@
 package fpinscala.exercises.parsing
 
 import scala.annotation.targetName
+import scala.util.matching.Regex
 
-case class ParsingResult[+A](read: A, remaining: String)
+case class ParsingResult[+A](result: A, matching: String, remaining: String)
 
 trait Parser[+A]:
   def apply(input: String): Either[ParseError, ParsingResult[A]]
-
-extension [A](p: Parser[A])
-  infix def or(p2: Parser[A]): Parser[A] = str =>
-    p(str).orElse(p2(str))
-  @targetName("orr")
-  def |(p2: Parser[A]): Parser[A] = p.or(p2)
-
-  def map[B](f: A => B): Parser[B] = str =>
-    p(str).map{pr => pr.copy(read = f(pr.read))}
-
-  def flatMap[B](f: A => Parser[B]): Parser[B] = str =>
-    p(str).flatMap { pr =>
-      f(pr.read)(pr.remaining)
-    }
-
-  def product[B](p2: Parser[B]): Parser[(A, B)] =
-    p.flatMap { a =>
-      p2.map { b =>
-       (a, b)
-      }
-    }
-
-  def map2[B, C](p2: Parser[B])(f: (A, B) => C): Parser[C] =
-    product(p2).map((a, b) => f(a,b))
-
-  def listOfN(n: Int): Parser[List[A]] =
-    if n <= 0 then str => Right(ParsingResult(Nil, str))
-    else p.map2(p.listOfN(n-1))(_ :: _)
-  //def listOfN(n: Int): Parser[List[A]] = str =>
-  //  if n <= 0 then Either.cond(str.isEmpty, Nil, ParseError((Location(str), str) :: Nil, Nil))
-  //  else p.run(str).flatMap: a =>
-  //    println(s"Found in $str, going for iteration ${n-1}")
-  //    listOfN(n-1).run(str.substring(a.)).map(as => a :: as)
+  def run(i: String): Either[ParseError, A] = apply(i).map(_.result)
 
 object Parser:
   def char(c: Char): Parser[Char] =
     string(c.toString).map(_.charAt(0))
   def string(s: String): Parser[String] = str =>
-    println(s"Cheking $s against input $str")
-    Either.cond(str.startsWith(s), ParsingResult(s, str.substring(s.length)), ParseError((Location(str), str) :: Nil, Nil))
+    println(s"Checking $s against input $str")
+    Either.cond(str.startsWith(s), ParsingResult(s, str.substring(0, s.length), str.substring(s.length)), ParseError((Location(str), str) :: Nil, Nil))
+  def regex(r: Regex): Parser[String] = str =>
+    println(s"Checking regex('$r') against input $str")
+    r.findPrefixOf(str) match
+      case None => Left(ParseError((Location(str), str) :: Nil, Nil))
+      case Some(matching) => Right(ParsingResult(matching, matching, str.substring(matching.length)))
+  def unit[A](a: A): Parser[A] =
+    str => Right(ParsingResult(a, "", str))
+  def succeed[A](a: A): Parser[A] = unit(a)
+  val nonNegativeInt: Parser[Int] = regex("[0-9]+".r).map(_.toInt)
+  val nConsecutiveAs: Parser[Int] = nonNegativeInt.flatMap { i =>
+    char('a').listOfN(i).map(_.size)
+  }
+
+  extension [A](p: Parser[A])
+    infix def or(p2: => Parser[A]): Parser[A] = str =>
+      p(str).orElse(p2(str))
+    @targetName("or")
+    def |(p2: Parser[A]): Parser[A] = p.or(p2)
+
+    def map[B](f: A => B): Parser[B] = str =>
+      p(str).map{pr => pr.copy(result = f(pr.result))}
+
+    def flatMap[B](f: A => Parser[B]): Parser[B] = str =>
+      p(str).flatMap { pr =>
+        f(pr.result)(pr.remaining) match
+          case Right(pr2) => Right(ParsingResult(pr2.result, pr.matching + pr2.matching, pr2.remaining))
+          case l @ Left(_) => l
+      }
+
+    infix def product[B](p2: => Parser[B]): Parser[(A, B)] =
+      p.flatMap { a =>
+        p2.map { b =>
+          (a, b)
+        }
+      }
+    /** Alias for 'product' */
+    @targetName("productt")
+    def **[B](p2: => Parser[B]): Parser[(A, B)] = product(p2)
+
+    def map2[B, C](p2: => Parser[B])(f: (A, B) => C): Parser[C] =
+      product(p2).map((a, b) => f(a,b))
+
+    def listOfN(n: Int): Parser[List[A]] =
+      if n <= 0 then unit(Nil)
+      else p.map2(p.listOfN(n-1))(_ :: _)
+
+    def many: Parser[List[A]] =
+      many1 | unit(Nil)
+
+    def many1: Parser[List[A]] =
+      p.map2(p.many)(_ :: _)
+
+    def numA: Parser[Int] = many.map(_.size)
+
+    /** Return the part of the input string examined. */
+    def slice: Parser[String] = str =>
+      p(str).map:
+        pr =>
+          pr.copy(result = pr.matching)
+  end extension
+end Parser
+
 
 trait Parsers[Parser[+_]]:
   self => // so inner classes may call methods of trait

@@ -4,12 +4,11 @@ import fpinscala.answers.testing.exhaustive.*
 import fpinscala.answers.testing.exhaustive.Prop.*
 import fpinscala.exercises.common.Common.*
 import fpinscala.exercises.common.PropSuite
-import fpinscala.exercises.parsing.Parsers
 
 class ParsersSuite extends PropSuite:
-  import UnitTestParser.*
+  import fpinscala.exercises.parsing.{Parser as FPParser, *}
+  import FPParser.{char, string, succeed, nonNegativeInt, nConsecutiveAs}
 
-  /*
   test("Parsers.char")(genChar): c =>
     assertEquals(char(c).run(c.toString), Right(c))
     val anotherChar = (c + 1).toChar
@@ -17,7 +16,6 @@ class ParsersSuite extends PropSuite:
 
   test("Parsers.string")(genString): s =>
     assertEquals(string(s).run(s), Right(s))
-
     val nonEmptyS = s"a$s"
     val anotherString = s"b$s"
     assert(string(nonEmptyS).run(anotherString).isLeft)
@@ -43,7 +41,7 @@ class ParsersSuite extends PropSuite:
     assert(p.run("abab").isLeft)
 
   test("Parsers.many")(Gen.unit(())): _ =>
-    val numA: Parser[Int] = char('a').many.map(_.size)
+    val numA: FPParser[Int] = char('a').many.map(_.size)
     assertEquals(numA.run("aaa"), Right(3))
     assertEquals(numA.run("a"), Right(1))
     assertEquals(numA.run("b"), Right(0))
@@ -66,7 +64,7 @@ class ParsersSuite extends PropSuite:
     assert(parserC.run("c").isLeft)
 
   test("Exercise 9.1, many1")(Gen.unit(())): _ =>
-    val numA: Parser[Int] = char('a').many1.map(_.size)
+    val numA: FPParser[Int] = char('a').many1.map(_.size)
     assertEquals(numA.run("aaa"), Right(3))
     assertEquals(numA.run("a"), Right(1))
     assert(numA.run("b").isLeft)
@@ -84,7 +82,7 @@ class ParsersSuite extends PropSuite:
     assertEquals(zeroOrMoreAFollowedByOneOrMoreB.run("aaabbbab"), Right((3, 3)))
     assert(zeroOrMoreAFollowedByOneOrMoreB.run("c").isLeft)
 
-  private val lawsParser: Gen[(Parser[Char], Parser[Char], Parser[Char], String, String)] =
+  private val lawsParser: Gen[(FPParser[Char], FPParser[Char], FPParser[Char], String, String)] =
     for
       a <- genChar
       b <- genChar
@@ -104,9 +102,6 @@ class ParsersSuite extends PropSuite:
       val mapOfProductParser = (a ** b).map((a, b) => (f(a), g(b)))
       assertEquals(productOfMapParser.run(success), mapOfProductParser.run(success))
       assertEquals(productOfMapParser.run(failure), mapOfProductParser.run(failure))
-
-  private val examples = new Examples(UnitTestParser)
-  import examples.*
 
   private val genNonNegativeIntExamples: Gen[(Int, Char, String)] =
     for
@@ -134,6 +129,5 @@ class ParsersSuite extends PropSuite:
     assert(nConsecutiveAs.run("aaaa").isLeft)
     assert(nConsecutiveAs.run("-4aaaa").isLeft)
 
-  private def unbiasL[A, B, C](p: ((A, B), C)): (A, B, C) = (p(0)(0), p(0)(1), p(1))
   private def unbiasR[A, B, C](p: (A, (B, C))): (A, B, C) = (p(0), p(1)(0), p(1)(1))
-  */
+  private def unbiasL[A, B, C](p: ((A, B), C)): (A, B, C) = (p(0)(0), p(0)(1), p(1))
