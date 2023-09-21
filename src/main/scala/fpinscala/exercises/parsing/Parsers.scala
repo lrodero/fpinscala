@@ -2,6 +2,7 @@ package fpinscala.exercises.parsing
 
 import scala.annotation.targetName
 import scala.util.matching.Regex
+import scala.io.AnsiColor.*
 
 case class ParsingResult[+A](result: A, matching: String, remaining: String)
 
@@ -13,26 +14,32 @@ object Parser:
   def char(c: Char): Parser[Char] =
     string(c.toString).map(_.charAt(0))
   def string(s: String): Parser[String] = str =>
-    println(s"Checking $s against input $str")
-    Either.cond(str.startsWith(s), ParsingResult(str, str.substring(0, s.length), str.substring(s.length)), ParseError((Location(str), str) :: Nil, Nil))
+    print(s"Checking ${CYAN}$s${RESET} against input ${CYAN}$str${RESET}")
+    val res = Either.cond(str.startsWith(s), ParsingResult(str.substring(0, s.length), str.substring(0, s.length), str.substring(s.length)), ParseError((Location(str), str) :: Nil, Nil))
+    println(res.fold(_ => s" ${RED}FAILED!!!${RESET}", _ => s" ${GREEN}ok${RESET}"))
+    res
   def stringIgnoreUppercase(s: String): Parser[String] = str =>
-    if s.size > str.size then Left(ParseError((Location(str), str) :: Nil, Nil))
+    if s.length > str.length then Left(ParseError((Location(str), str) :: Nil, Nil))
     else
-      Either.cond(str.substring(0, s.size).equalsIgnoreCase(s), ParsingResult(str, str.substring(0, s.length), str.substring(s.length)), ParseError((Location(str), str) :: Nil, Nil))
+      Either.cond(str.substring(0, s.length).equalsIgnoreCase(s), ParsingResult(str.substring(0, s.length), str.substring(0, s.length), str.substring(s.length)), ParseError((Location(str), str) :: Nil, Nil))
   def regex(r: Regex): Parser[String] = str =>
-    println(s"Checking regex('$r') against input $str")
-    r.findPrefixOf(str) match
+    println(s"Checking regex('$r') against input '$str'")
+    val res = r.findPrefixOf(str) match
       case None => Left(ParseError((Location(str), str) :: Nil, Nil))
       case Some(matching) => Right(ParsingResult(matching, matching, str.substring(matching.length)))
+    println(res.fold(_ => s" ${RED}FAILED!!!${RESET}", _ => s" ${GREEN}ok${RESET}"))
+    res
   def unit[A](a: A): Parser[A] =
     str => Right(ParsingResult(a, "", str))
   def succeed[A](a: A): Parser[A] = unit(a)
   val nonNegativeInt: Parser[Int] = regex("[+]?[0-9]+".r).map(_.toInt)
-  val intNumber: Parser[Int] = regex(("[+-]?[0-9]+").r).map(_.toInt)
-  val doubleNumber: Parser[Double] = regex("[+-]?[0-9]+(\\.[0-9]+)?".r).map(_.toDouble)
+  val intNumber: Parser[Int] = regex("[+-]?[0-9]+".r).map(_.toInt)
+  val doubleNumber: Parser[Double] = regex("[+-]?[0-9]+(\\.[0-9]+)?([Ee][+-]?[0-9]+)?".r).map(_.toDouble)
   val nConsecutiveAs: Parser[Int] = nonNegativeInt.flatMap { i =>
     char('a').listOfN(i).map(_.size)
   }
+  val anyCharSaveDoubleQuotes: Parser[String] = regex("[^\"]*".r)
+  val whitespaces: Parser[String] = regex("\\s*".r)
 
   extension [A](p: Parser[A])
     infix def or(p2: => Parser[A]): Parser[A] = str =>
@@ -40,8 +47,8 @@ object Parser:
     @targetName("or")
     def |(p2: Parser[A]): Parser[A] = p.or(p2)
 
-    def map[B](f: A => B): Parser[B] = str =>
-      p(str).map{pr => pr.copy(result = f(pr.result))}
+    def map[B](f: A => B): Parser[B] =
+      flatMap(a => unit(f(a)))
 
     def flatMap[B](f: A => Parser[B]): Parser[B] = str =>
       p(str).flatMap { pr =>
@@ -75,7 +82,17 @@ object Parser:
 
     def numA: Parser[Int] = many.map(_.size)
 
-    /** Return the part of the input string examined. */
+    /** Trim the input string before applying the parsing function */
+    def trimmed: Parser[A] = str => p(str.trim)
+
+    /** Parses a list of elements of A separated by the given char */
+    def listSeparatedBy(c: Char): Parser[List[A]] =
+      (p ** char(c))
+        .map(_._1) // drop the separator
+        .many
+        .map2(p)((init, last) => init :+ last)
+
+/** Return the part of the input string examined. */
     def slice: Parser[String] = str =>
       p(str).map:
         pr =>
