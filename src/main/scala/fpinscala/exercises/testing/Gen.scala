@@ -6,6 +6,7 @@ import fpinscala.exercises.parallelism.*
 import fpinscala.exercises.parallelism.Par.Par
 import Gen.*
 import Prop.*
+import fpinscala.answers.state.State
 import fpinscala.exercises.testing.Result.Passed
 
 import java.util.concurrent.{ExecutorService, Executors}
@@ -121,4 +122,11 @@ object Gen:
       Transition.sequence(transitions)
 
     def unsized: SGen[A] = _ => self
+
+    def map2[B, C](that: Gen[B])(f: (A, B) => C): Gen[C] =
+      Transition.map2(self)(that)(f)
+
+    @targetName("product")
+    def **[B](gb: Gen[B]): Gen[(A, B)] =
+      map2(gb){(a:A , b: B) => (a, b)}
 

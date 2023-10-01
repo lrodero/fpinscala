@@ -145,7 +145,6 @@ object Monoid:
 
   val wcMonoid: Monoid[WC] = new Monoid[WC]:
     val empty = WC.Stub("")
-
     def combine(wc1: WC, wc2: WC) = (wc1, wc2) match
       case (WC.Stub(a), WC.Stub(b)) => WC.Stub(a + b)
       case (WC.Stub(a), WC.Part(l, w, r)) => WC.Part(a + l, w, r)
