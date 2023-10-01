@@ -1,6 +1,7 @@
 package fpinscala.exercises.parallelism
 
 import java.util.concurrent.*
+import scala.annotation.targetName
 
 object Par:
   opaque type Par[A] = ExecutorService => Future[A]
@@ -9,6 +10,10 @@ object Par:
 
   def unit[A](a: A): Par[A] =
     es => UnitFuture(a) // `unit` is represented as a function that returns a `UnitFuture`, which is a simple implementation of `Future` that just wraps a constant value. It doesn't use the `ExecutorService` at all. It's always done and can't be cancelled. Its `get` method simply returns the value that we gave it.
+
+  @targetName("Par.flatMap")
+  def flatMap[A, B](p: Par[A])(f: A => Par[B]): Par[B] =
+    p.flatMap[B](f)
 
   private case class UnitFuture[A](get: A) extends Future[A]:
     def isDone = true
@@ -129,17 +134,17 @@ object Par:
       choices(k).run(es)
 
   def choiceViaFlatMap[A](p: Par[Boolean])(f: Par[A], t: Par[A]): Par[A] =
-    flatMap(p)(b => if b then t else f)
+    p.flatMap(b => if b then t else f)
 
   def choiceNViaFlatMap[A](p: Par[Int])(choices: List[Par[A]]): Par[A] =
-    flatMap(p)(i => choices(i))
+    p.flatMap(i => choices(i))
 
   // see nonblocking implementation in `Nonblocking.scala`
   def join[A](a: Par[Par[A]]): Par[A] =
     es => a.run(es).get().run(es)
 
   def joinViaFlatMap[A](a: Par[Par[A]]): Par[A] =
-    flatMap(a)(x => x)
+    a.flatMap(x => x)
 
   extension [A](pa: Par[A]) def flatMapViaJoin[B](f: A => Par[B]): Par[B] =
     join(pa.map(f))

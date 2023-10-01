@@ -84,10 +84,11 @@ object Prop:
         |stack trace:
         | ${e.getStackTrace.mkString("\n")}""".stripMargin
 
-opaque type Gen[+A] = Transition[RNG, A]
+opaque type Gen[+A] <: Transition[RNG, A] = Transition[RNG, A] // RNG => (A, RNG)
 opaque type SGen[+A] = Int => Gen[A]
 import Transition.*
 object Gen:
+  def apply[A](g: Transition[RNG, A]): Gen[A] = g
   def unit[A](a: => A): Gen[A] = Transition.unit(a)
 
   val boolean: Gen[Boolean] = Transition[RNG, Boolean] { (rng: RNG) =>
@@ -103,6 +104,9 @@ object Gen:
     double =>
       val threshold = g1._2 / (g1._2 + g2._2)
       if double < threshold then g1._1 else g2._1
+
+  @targetName("Gen.flatMap")
+  def flatMap[A, B](ga: Gen[A])(f: A => Gen[B]): Gen[B] = ga.flatMap[B](f)
 
   extension [A](self: Gen[A])
     def flatMap[B](f: A => Gen[B]): Gen[B] = Transition[RNG, B] { rng =>
@@ -129,4 +133,5 @@ object Gen:
     @targetName("product")
     def **[B](gb: Gen[B]): Gen[(A, B)] =
       map2(gb){(a:A , b: B) => (a, b)}
+
 
